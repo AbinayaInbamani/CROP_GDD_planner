@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta, date
 from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from requests.exceptions import HTTPError, RequestException
 import streamlit as st
 
@@ -9,8 +10,15 @@ import streamlit as st
 # 0. Geocoding
 # -----------------------------
 def geocode_place(place_name):
-    geolocator = Nominatim(user_agent="gdd_farmer_app_demo")
-    location = geolocator.geocode(place_name)
+    geolocator = Nominatim(
+        user_agent="farmer_gdd_tracker_app",
+        timeout=5  # increase from default 1s to 5s
+    )
+    try:
+        location = geolocator.geocode(place_name, limit=1)
+    except (GeocoderTimedOut, GeocoderServiceError) as e:
+        raise ValueError(f"Geocoding service error: {e}")
+
     if location is None:
         raise ValueError(f"Place not found: {place_name}")
     return location.latitude, location.longitude, location.address
@@ -146,6 +154,8 @@ def main():
     start_date_str = st.text_input("Start date (YYYY-MM-DD)", value="2025-01-01")
     tbase = st.number_input("Base temperature (°C)", value=10.0)
 
+    use_manual_coords = st.checkbox("I know my latitude/longitude (skip geocoding)")
+
     targets_default = (100, 300, 500, 1000)
     if st.checkbox("Customize GDD targets", value=False):
         targets_input = st.text_input(
@@ -161,18 +171,22 @@ def main():
         targets = targets_default
 
     if st.button("Run GDD simulation"):
-        if not place_name:
-            st.error("Please enter a place name.")
-            return
+        if use_manual_coords:
+            lat = st.number_input("Latitude", value=29.6516)
+            lon = st.number_input("Longitude", value=-82.3248)
+            full_address = f"Manual coordinates: {lat}, {lon}"
+        else:
+            if not place_name:
+                st.error("Please enter a place name.")
+                return
+            try:
+                st.write("Geocoding your place...")
+                lat, lon, full_address = geocode_place(place_name)
+            except Exception as e:
+                st.error(f"Could not find that place or geocoding failed: {e}")
+                return
 
-        try:
-            st.write("Geocoding your place...")
-            lat, lon, full_address = geocode_place(place_name)
-        except Exception as e:
-            st.error(f"Could not find that place: {e}")
-            return
-
-        st.success(f"Location found: {full_address}")
+        st.success(f"Location: {full_address}")
         st.write(f"Latitude: {lat:.4f}, Longitude: {lon:.4f}")
         st.write(f"Start date: {start_date_str}")
         st.write(f"Base temperature: {tbase} °C")
