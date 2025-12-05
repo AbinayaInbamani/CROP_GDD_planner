@@ -1,27 +1,30 @@
+import os
 import requests
 import pandas as pd
 from datetime import datetime, timedelta, date
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from requests.exceptions import HTTPError, RequestException
 import streamlit as st
+from opencage.geocoder import OpenCageGeocode
 
 # -----------------------------
-# 0. Geocoding
+# 0. Geocoding (OpenCage)
 # -----------------------------
 def geocode_place(place_name):
-    geolocator = Nominatim(
-        user_agent="farmer_gdd_tracker_app",
-        timeout=5  # increase from default 1s to 5s
-    )
-    try:
-        location = geolocator.geocode(place_name, limit=1)
-    except (GeocoderTimedOut, GeocoderServiceError) as e:
-        raise ValueError(f"Geocoding service error: {e}")
+    api_key = os.environ.get("OPENCAGE_API_KEY")
+    if not api_key:
+        raise ValueError("OPENCAGE_API_KEY not set. Configure it in environment or Streamlit secrets.")
 
-    if location is None:
+    geocoder = OpenCageGeocode(api_key)
+    results = geocoder.geocode(place_name, limit=1, no_annotations=1)
+
+    if not results:
         raise ValueError(f"Place not found: {place_name}")
-    return location.latitude, location.longitude, location.address
+
+    best = results[0]
+    lat = best["geometry"]["lat"]
+    lon = best["geometry"]["lng"]
+    formatted = best.get("formatted", place_name)
+    return lat, lon, formatted
 
 # -----------------------------
 # 1. NASA POWER block fetch
@@ -150,7 +153,7 @@ def main():
         "for your village/town and predicts when cumulative GDD will reach key stages."
     )
 
-    place_name = st.text_input("Place name (village/town/district, etc.)", value="Gainesville, Florida")
+    place_name = st.text_input("Place name (village/town/district, etc.)", value="Chennai, India")
     start_date_str = st.text_input("Start date (YYYY-MM-DD)", value="2025-01-01")
     tbase = st.number_input("Base temperature (°C)", value=10.0)
 
@@ -172,18 +175,18 @@ def main():
 
     if st.button("Run GDD simulation"):
         if use_manual_coords:
-            lat = st.number_input("Latitude", value=29.6516)
-            lon = st.number_input("Longitude", value=-82.3248)
+            lat = st.number_input("Latitude", value=13.0827)
+            lon = st.number_input("Longitude", value=80.2707)
             full_address = f"Manual coordinates: {lat}, {lon}"
         else:
             if not place_name:
                 st.error("Please enter a place name.")
                 return
             try:
-                st.write("Geocoding your place...")
+                st.write("Geocoding your place with OpenCage...")
                 lat, lon, full_address = geocode_place(place_name)
             except Exception as e:
-                st.error(f"Could not find that place or geocoding failed: {e}")
+                st.error(f"Could not geocode that place: {e}")
                 return
 
         st.success(f"Location: {full_address}")
