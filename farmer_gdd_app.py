@@ -208,9 +208,9 @@ def main():
 
         st.subheader("Predicted stages (if reached)")
         labels = {
-            100: "Blowing date (100 GDD)",
-            300: "Sprout (300 GDD)",
-            500: "Bloom (500 GDD)",
+            100: "Emergence / Sprout (100 GDD)",
+            300: "Vegetative growth / Leaf development(300 GDD)",
+            500: "Flowering / Bloom (500 GDD)",
             1000: "Colour change / Harvest (1000 GDD)"
         }
         for thr in targets:
