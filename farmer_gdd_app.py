@@ -1,4 +1,3 @@
-
 import requests
 import pandas as pd
 from datetime import datetime, timedelta, date
@@ -20,9 +19,9 @@ def geocode_place(place_name):
 # 1. NASA POWER block fetch
 # -----------------------------
 def get_power_daily_tmax_tmin(lat, lon, start_date, end_date, max_retries=3):
-    \"\"\"Fetch daily T2M_MAX and T2M_MIN from NASA POWER between start_date and end_date.
+    """Fetch daily T2M_MAX and T2M_MIN from NASA POWER between start_date and end_date.
     Retries a few times if a 5xx error occurs.
-    \"\"\"
+    """
     start_str = pd.to_datetime(start_date).strftime("%Y%m%d")
     end_str = pd.to_datetime(end_date).strftime("%Y%m%d")
 
@@ -82,9 +81,9 @@ def simulate_gdd(lat, lon, start_date, tbase,
                  targets=(100, 300, 500, 1000),
                  max_days=365*3,
                  block_days=30):
-    \"\"\"Fetches NASA POWER data in small blocks (e.g. 30 days) and
+    """Fetches NASA POWER data in small blocks (e.g. 30 days) and
     stops when highest target reached or max_days passed.
-    \"\"\"
+    """
     start_date = pd.to_datetime(start_date).date()
     end_date_limit = start_date + timedelta(days=max_days)
 
